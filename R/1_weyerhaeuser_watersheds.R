@@ -141,4 +141,4 @@ mapview(stream_10m)
 
 #SAve map file
 setwd("docs/")
-mapshot(m, "sheds.html")
+mapshot(m, "cp_sheds.html")
