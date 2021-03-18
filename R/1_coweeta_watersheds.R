@@ -43,7 +43,7 @@ detach("package:whitebox")
 detach("package:stars")
 
 #Clean up shape 
-sheds<-sheds %>% 
+all_sheds<-sheds %>% 
   #remove unneeded cols
   dplyr::select(WATERSHED) %>% 
   #Calc area
@@ -51,10 +51,13 @@ sheds<-sheds %>%
   mutate(area_ha = as.numeric(area_ha)/10000) %>% 
   arrange(-area_ha)
 
+ref_sheds<-sheds %>% 
+  filter(., WATERSHED %in% c(1,2,6,7,8,13,14,17,18,27,31,32,34,36,37))
+
 #plot
 m<-mapview(
-  sheds,
-  zcol="WATERSHED",  
+  ref_sheds,
+  #zcol=c("WATERSHED","area_ha"),  
   alpha.regions=0.3,
   map.types=c("OpenTopoMap")) 
 
