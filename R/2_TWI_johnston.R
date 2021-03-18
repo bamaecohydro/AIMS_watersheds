@@ -257,8 +257,10 @@ m<-mapview(
     shed,
     alpha.regions=0.3,
     map.types=c("OpenTopoMap")) +
-  mapview(dem) +
+  #mapview(dem) +
+  mapview(pnts, zcol='twi') +
   mapview(pnts, zcol='area_prop')
+
 m
 
 #3.2 Create Plot ---------------------------------------------------------------
@@ -276,8 +278,8 @@ p
 #3.3 Export --------------------------------------------------------------------
 #Save map file
 setwd("docs/")
-mapshot(m, "twi_dry_creek.html")
+mapshot(m, "twi_johnston.html")
 
-png("twi_dry_creek.png", height = 3, width = 3.5, units = "in", res=100)
+png("twi_jonston.png", height = 3, width = 3.5, units = "in", res=100)
 p
 dev.off()

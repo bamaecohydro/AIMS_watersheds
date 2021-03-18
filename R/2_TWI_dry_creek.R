@@ -251,10 +251,11 @@ st_crs(pnts)<-st_crs(shed)
 
 #plot
 m<-mapview(
-    shed,
-    alpha.regions=0.3,
-    map.types=c("OpenTopoMap")) +
-  mapview(dem) +
+  shed,
+  alpha.regions=0.3,
+  map.types=c("OpenTopoMap")) +
+  #mapview(dem) +
+  mapview(pnts, zcol='twi') +
   mapview(pnts, zcol='area_prop')
 m
 
