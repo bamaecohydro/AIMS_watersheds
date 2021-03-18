@@ -276,6 +276,6 @@ p
 setwd("docs/")
 mapshot(m, "twi_paint.html")
 
-png("twi_paint.html", height = 3, width = 3.5, units = "in", res=200)
+png("twi_paint.png", height = 3, width = 3.5, units = "in", res=100)
 p
 dev.off()
