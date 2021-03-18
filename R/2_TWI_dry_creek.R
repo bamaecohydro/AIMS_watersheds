@@ -24,23 +24,22 @@ library(mapview)
 library(htmlwidgets)
 
 #Define data directories
-data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_weyerhaeuser//"
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_dry_creek//"
 scratch_dir<-"C://WorkspaceR//AIMS_watersheds//data//II_scratch//"
 output_dir<-"C://WorkspaceR//AIMS_watersheds//data//III_output//"
 
 #Load DEM and pour points
-dem<-raster(paste0(data_dir,"dem.tif"))
-pp<-st_read(paste0(data_dir,"flumes.shp")) %>% 
-  filter(Flumes=="Alt 3") %>% slice(n=1)
+dem<-raster(paste0(data_dir,"DCEW-DEMclip.tif"))
+pp<-st_read(paste0(data_dir, "pp.shp"))
 
 #Plot in mapview for funzies
-mapview(dem) + mapview(pp)
+mapview(dem) 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 2: Spatial Analysis --------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #2.1 Create function to create watershed shape~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-fun<-function(pp, dem, threshold=100000, name){
+fun<-function(pp, dem, threshold=1000, name){
   
   #Export DEM to scratch workspace
   writeRaster(dem, paste0(scratch_dir,"dem.tif"), overwrite=T)
@@ -236,7 +235,7 @@ fun<-function(pp, dem, threshold=100000, name){
 }
 
 #2.2 run function~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-output<-fun(pp, dem, name=pp$Name)
+output<-fun(pp, dem, name="dry_creek")
 shed<-output[[1]]
 pnts<-output[[2]]
 export<-output[[3]]
@@ -248,14 +247,14 @@ dem_clip<-output[[4]]
 #3.1 Create map ----------------------------------------------------------------
 area_max<-max(pnts$con_area_ha, na.rm=T)
 pnts<-pnts %>% mutate(area_prop =con_area_ha/area_max)
+st_crs(pnts)<-st_crs(shed)
 
 #plot
 m<-mapview(
     shed,
     alpha.regions=0.3,
     map.types=c("OpenTopoMap")) +
-  mapview(dem_clip) +
-  mapview(pnts, zcol = 'twi') + 
+  mapview(dem) +
   mapview(pnts, zcol='area_prop')
 m
 
@@ -274,8 +273,8 @@ p
 #3.3 Export --------------------------------------------------------------------
 #Save map file
 setwd("docs/")
-mapshot(m, "twi_weyer.html")
+mapshot(m, "twi_dry_creek.html")
 
-png("twi_weyer.png", height = 3, width = 3.5, units = "in", res=100)
+png("twi_dry_creek.png", height = 3, width = 3.5, units = "in", res=100)
 p
 dev.off()
