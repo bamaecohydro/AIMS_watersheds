@@ -30,12 +30,13 @@ output_dir<-"C://WorkspaceR//AIMS_watersheds//data//III_output//"
 
 #Load DEM and pour points
 dem<-raster(paste0(data_dir,"dem_10m"))
+pp<-st_read(paste0(data_dir,"pp.shp"))
 
 #Plot in mapview for funzies
 mapview(dem) 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Step 2: Hole Basin Analysis----------------------------------------------------
+#Step 2: Whole Basin Analysis----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #2.1 Create stream -------------------------------------------------------------
 #Export DEM to scratch workspace
@@ -146,7 +147,7 @@ wbt_multiply(
   wd     = scratch_dir
 )
   
-#2.3 Convert stream grids to point----------------------------------------------
+#2.3 Convert stream grids to points----------------------------------------------
 #Convert to polygon
 wbt_raster_streams_to_vector(
   streams = "stream.tif",
@@ -175,11 +176,86 @@ pnts<-
   mutate(twi = extract(twi, .))
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Step 4: Watershed Delineation ------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#2.1 Create function to create watershed shape~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fun<-function(n){
+  
+  #isolate pp
+  pp<-pp[n,]
+  
+  #Smooth DEM
+  wbt_gaussian_filter(
+    input = "dem.tif", 
+    output = "dem_smoothed.tif",
+    wd = scratch_dir)
+  
+  #breach depressions
+  wbt_breach_depressions(
+    dem =    "dem_smoothed.tif",
+    output = "dem_breached.tif",
+    fill_pits = F,
+    wd = scratch_dir)
+  
+  #Flow direction raster
+  wbt_d8_pointer(
+    dem= "dem_breached.tif",
+    output ="fdr.tif",
+    wd = scratch_dir
+  )
+  
+  #Flow accumulation raster
+  wbt_d8_flow_accumulation(
+    input = "dem_breached.tif",
+    output = "fac.tif",
+    wd = scratch_dir
+  )
+  
+  #Create Stream Layer
+  stream<-raster(paste0(scratch_dir,"fac.tif"))
+  stream[stream<2500]<-NA
+  writeRaster(stream, paste0(scratch_dir,"stream.tif"), overwrite=T)
+  
+  #Paste point points in scratch dir
+  st_write(pp, paste0(scratch_dir,"pp.shp"), delete_dsn = T)
+  
+  #Snap pour point
+  wbt_jenson_snap_pour_points(
+    pour_pts = "pp.shp", 
+    streams = "stream.tif",
+    snap_dist = 100,
+    output =  "snap.shp",
+    wd= scratch_dir)
+  
+  #2.4 Delineat watersheds~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+  wbt_watershed(
+    d8_pntr = "fdr.tif",
+    pour_pts = "snap.shp", 
+    output = "sheds.tif" ,
+    wd=scratch_dir)
+  
+  #load watershed raster into R env
+  sheds<-raster(paste0(scratch_dir,"sheds.tif"))
+  
+  #Convert raster to vector
+  sheds<- sheds %>% st_as_stars() %>% st_as_sf(., merge = TRUE)
+  
+  #Add pp ID
+  sheds$name <-pp$Name
+  
+  #export shape
+  sheds
+}
+
+#2.2 run function~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sheds<-lapply(seq(1,nrow(pp)), fun) %>% bind_rows()
+
 #3.0 Export --------------------------------------------------------------------
 #Save map file
 setwd("docs/")
-m<-mapview(dem, map.types = c("Esri.WorldShadedRelief", "OpenStreetMap.DE")) + 
+m<-mapview(sheds, map.types = c("Esri.WorldShadedRelief", "OpenStreetMap.DE")) + 
   mapview(streams) + 
-  mapview(pnts, zcol = 'twi')
+  mapview(pnts, zcol = 'twi') 
 mapshot(m, "twi_coweeta.html")
 
