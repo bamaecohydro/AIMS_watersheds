@@ -24,21 +24,21 @@ library(mapview)
 library(htmlwidgets)
 
 #master crs
-p<-"+proj=utm +zone=15 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+p<-"+proj=utm +zone=14 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
 #Define data directories
-data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_blue//"
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_kanza//"
 scratch_dir<-"C://WorkspaceR//AIMS_watersheds//data//II_scratch//"
 output_dir<-"C://WorkspaceR//AIMS_watersheds//data//III_output//"
 
 #Load DEM and pour points
-dem<-raster(paste0(data_dir,"dem.tif"))
+dem<-raster(paste0(data_dir,"GIS201.tif"))
 dem<-projectRaster(dem, crs=p)
 
 #Create pp
 pp<-tibble(
-      x = 34.455846,
-      y = -96.664498) %>% 
+      x = 39.093064,
+      y = -96.588494) %>% 
   st_as_sf(., coords = c("y","x"), crs=4326) %>% 
   st_transform(., crs = st_crs(p))
 
@@ -185,7 +185,7 @@ fun<-function(pp, dem, threshold=4604, name){
 }
 
 #2.2 run function~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-output<-fun(pp, dem, threshold=20000, name="Youngmeyer")
+output<-fun(pp, dem, threshold=20000, name="Kanza")
 shed<-output[[1]]
 pnts<-output[[2]]
 streams<-output[[3]]
@@ -203,7 +203,7 @@ st_crs(pnts)<-st_crs(shed)
 m<-mapview(
   shed,
   alpha.regions=0.3) +
-   mapview(streams) +
+  mapview(streams) +
   mapview(pnts, zcol='twi') +
   mapview(pnts, zcol='area_prop')
 m
@@ -223,8 +223,8 @@ p
 #3.3 Export --------------------------------------------------------------------
 #Save map file
 setwd("docs/")
-mapshot(m, "twi_blue.html")
+mapshot(m, "twi_kanza.html")
 
-png("twi_blue.png", height = 3, width = 3.5, units = "in", res=100)
+png("twi_kanza.png", height = 3, width = 3.5, units = "in", res=100)
 p
 dev.off()
