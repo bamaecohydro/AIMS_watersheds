@@ -337,3 +337,110 @@ m
 #export
 mapshot(m, "docs//weyerhaeuser.html")
 st_write(shed, paste0(output_dir, "weyerhaeuser.shp"))
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Step 4: Great Plains Region Watersheds--------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.1 Blue Creek (Oklahoma) -----------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_blue//"
+
+#Define data inputs
+p<-"+proj=utm +zone=15 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+dem<-raster(paste0(data_dir,"dem.tif"))
+dem<-projectRaster(dem, crs=p)
+pp<-tibble(
+  x = 34.455846,
+  y = -96.664498) %>% 
+  st_as_sf(., coords = c("y","x"), crs=4326) %>% 
+  st_transform(., crs = st_crs(p))
+threshold<-4604
+
+#Run model
+output<-fun(scratch_dir, dem, pp, threshold)
+shed<-output[[1]]
+pnts<-output[[2]]
+streams<-output[[3]]
+
+#Create interactive map
+m<-mapview(
+  shed,
+  alpha.regions=0.3) +
+  mapview(streams) +
+  mapview(pnts, zcol='twi') 
+m
+
+#export
+mapshot(m, "docs//blue.html", selfcontained=T)
+st_write(shed, paste0(output_dir, "blue.shp"))
+
+#4.2 King Creek (Konza) -----------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_kanza//"
+
+#Define data inputs
+p<-"+proj=utm +zone=14 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+dem<-raster(paste0(data_dir,"GIS201.tif"))
+dem<-projectRaster(dem, crs=p)
+pp<-tibble(
+  x = 39.093064,
+  y = -96.588494) %>% 
+  st_as_sf(., coords = c("y","x"), crs=4326) %>% 
+  st_transform(., crs = st_crs(p))
+threshold<-4604
+
+#Run model
+output<-fun(scratch_dir, dem, pp, threshold)
+shed<-output[[1]]
+pnts<-output[[2]]
+streams<-output[[3]]
+
+#Create interactive map
+m<-mapview(
+  shed,
+  alpha.regions=0.3) +
+  mapview(streams) +
+  mapview(pnts, zcol='twi') 
+m
+
+#export
+mapshot(m, "docs//konza.html", selfcontained=T)
+st_write(shed, paste0(output_dir, "konza.shp"), delete_layer = T)
+
+#4.3 Youngmeyer Ranch ----------------------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_youngmeyer//"
+
+#Define data inputs
+p<-"+proj=utm +zone=14 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+dem<-raster(paste0(data_dir,"dem.tif"))
+dem<-projectRaster(dem, crs=p)
+pp<-tibble(
+  x = 37.532459,
+  y = -96.471819) %>% 
+  st_as_sf(., coords = c("y","x"), crs=4326) %>% 
+  st_transform(., crs = st_crs(p))
+threshold<-4604
+
+#Run model
+output<-fun(scratch_dir, dem, pp, threshold)
+shed<-output[[1]]
+pnts<-output[[2]]
+streams<-output[[3]]
+
+#Create interactive map
+m<-mapview(
+  shed,
+  alpha.regions=0.3) +
+  mapview(streams) +
+  mapview(pnts, zcol='twi') 
+m
+
+#export
+mapshot(m, "docs//young.html", selfcontained=T)
+st_write(shed, paste0(output_dir, "young.shp"), delete_layer = T)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Step 5: Mountain West Region Watersheds--------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
