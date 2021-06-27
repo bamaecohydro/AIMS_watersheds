@@ -19,8 +19,7 @@ library(whitebox)
 library(sf)
 library(raster)
 library(stars)
-library(mapview)
-library(htmlwidgets)
+library(mapview); mapviewOptions(fgb = FALSE)
 
 #Define data directories
 scratch_dir<-"C://WorkspaceR//AIMS_watersheds//data//II_scratch//"
@@ -232,10 +231,10 @@ fun<-function(
       coords  = c('X','Y'), 
       crs = st_crs(dem@crs)) %>% 
     mutate(
-      twi = round(extract(twi, .), 0), 
-      #con_area_ha = round(extract(fac, .)/10000, 0),
-      elevation_m = round(extract(dem, .), 0),
-      slope = round(extract(slope, .),0))
+      twi = round(raster::extract(twi, .), 0), 
+      #con_area_ha = round(raster::extract(fac, .)/10000, 0),
+      elevation_m = round(raster::extract(dem, .), 0),
+      slope = round(raster::extract(slope, .),0))
 
   #Clip to watershed
   pnts<-pnts[sheds,] 
@@ -254,8 +253,6 @@ fun<-function(
 #3.1 Coweeta -------------------------------------------------------------------
 #Define Data Directory
 data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_coweeta//"
-scratch_dir<-"C://WorkspaceR//AIMS_watersheds//data//II_scratch//"
-output_dir<-"C://WorkspaceR//AIMS_watersheds//data//III_output//"
 
 #Define data inputs
 dem<-raster(paste0(data_dir,"dem_10m"))
@@ -276,8 +273,9 @@ m<-mapview(
   mapview(pnts, zcol='twi') 
 m
 
-# #Export Map
-# mapshot(m, "Coweeta.html")
+# Export Map
+mapshot(m, "docs//Coweeta.html")
+st_write(shed, paste0(output_dir, "coweeta_shed.shp"))
 
 #3.2 Paint Rock (Fanning Hollow) -----------------------------------------------
 #Define Data Directory
@@ -303,15 +301,24 @@ m<-mapview(
   mapview(pnts, zcol='twi') 
 m
 
+#export
+mapshot(m, "docs//paintrock.html")
+st_write(shed, paste0(output_dir, "paintrock_shed.shp"))
+
 #3.3 Weyerhaeuser (Shambley Creek) -----------------------------------------------
 #Define Data Directory
 data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_weyerhaeuser//"
 
 #Define data inputs
 dem<-raster(paste0(data_dir,"dem.tif"))
-pp<-st_read(paste0(data_dir,"flumes.shp")) %>% 
-  filter(Flumes=="Alt 2") %>% slice(n=1)
-threshold=20000
+pp<-tibble(
+  y=c(32.98465), 
+  x=c(-88.01226)) %>% 
+  st_as_sf(., 
+           coords = c("x", "y"), 
+           crs = '+proj=longlat +datum=WGS84 +no_defs') %>% 
+  st_transform(., crs = st_crs(dem@crs))
+threshold<-20000
 
 #Run model
 output<-fun(scratch_dir, dem, pp, threshold)
@@ -327,3 +334,6 @@ m<-mapview(
   mapview(pnts, zcol='twi') 
 m
 
+#export
+mapshot(m, "docs//weyerhaeuser.html")
+st_write(shed, paste0(output_dir, "weyerhaeuser.shp"))
