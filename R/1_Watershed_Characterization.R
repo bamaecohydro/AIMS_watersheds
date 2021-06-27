@@ -443,4 +443,91 @@ st_write(shed, paste0(output_dir, "young.shp"), delete_layer = T)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 5: Mountain West Region Watersheds--------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#5.1 Dry Creek -----------------------------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_dry_creek//"
+
+#Define data inputs
+#Load DEM and pour points
+dem<-raster(paste0(data_dir,"DCEW-DEMclip.tif"))
+pp<-st_read(paste0(data_dir, "pp.shp"))
+threshold<-1000
+
+#Run model
+output<-fun(scratch_dir, dem, pp, threshold)
+shed<-output[[1]]
+pnts<-output[[2]]
+streams<-output[[3]]
+
+#Create interactive map
+m<-mapview(
+  shed,
+  alpha.regions=0.3) +
+  mapview(streams) +
+  mapview(pnts, zcol='twi') 
+m
+
+#export
+mapshot(m, "docs//drycreek.html", selfcontained=T)
+st_write(shed, paste0(output_dir, "drycreek.shp"), delete_layer = T)
+
+#5.2 Gibson Jack ---------------------------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_gibson//"
+
+#Define data inputs
+#Load DEM and pour points
+dem<-raster(paste0(data_dir,"gibson_lidar_1m_UTM_dem.tif"))
+pp<-st_read(paste0(data_dir, "gage.shp")) %>% 
+  st_transform(., st_crs(dem@crs))
+threshold<-10000
+
+#Run model
+output<-fun(scratch_dir, dem, pp, threshold)
+shed<-output[[1]]
+pnts<-output[[2]]
+streams<-output[[3]]
+
+#Create interactive map
+m<-mapview(
+  shed,
+  alpha.regions=0.3) +
+  mapview(streams) +
+  mapview(pnts, zcol='twi') 
+m
+
+#export
+mapshot(m, "docs//gibson.html", selfcontained=T)
+st_write(shed, paste0(output_dir, "gibson.shp"), delete_layer = T)
+
+#5.3 Johnston Draw -------------------------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_johnston_draw//"
+
+#Define data inputs
+#Load DEM and pour points
+dem<-raster(paste0(data_dir,"rcew_DEM_3m_filled.tif"))
+pp<-tibble(
+  x = 518285, 
+  y = 4774255 ) %>% 
+  st_as_sf(., coords = c("x","y"), crs = st_crs(dem@crs))
+threshold<-1000
+
+#Run model
+output<-fun(scratch_dir, dem, pp, threshold)
+shed<-output[[1]]
+pnts<-output[[2]]
+streams<-output[[3]]
+
+#Create interactive map
+m<-mapview(
+  shed,
+  alpha.regions=0.3) +
+  mapview(streams) +
+  mapview(pnts, zcol='twi') 
+m
+
+#export
+mapshot(m, "docs//johnston.html", selfcontained=T)
+st_write(shed, paste0(output_dir, "johnston.shp"), delete_layer = T)
 
