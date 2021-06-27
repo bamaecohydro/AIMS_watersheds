@@ -287,13 +287,13 @@ streams<-output_1[[3]]
 #Create interactive map
 mapviewOptions(fgb = FALSE)
 m<-mapview(
-    catchment_small_pool, 
-    alpha.regions=1,
-    col.regions = 'orange')+
-  mapview(
     catchment_large_pool, 
     alpha.regions=0.3,
     col.regions = 'dark blue')+
+  mapview(
+    catchment_small_pool, 
+    alpha.regions=1,
+    col.regions = 'orange') +
   mapview(streams) +
   mapview(gps)
 m
