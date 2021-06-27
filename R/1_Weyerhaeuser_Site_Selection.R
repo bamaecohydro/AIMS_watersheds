@@ -288,14 +288,13 @@ streams<-output_1[[3]]
 mapviewOptions(fgb = FALSE)
 m<-mapview(
     catchment_small_pool, 
-    alpha.regions=0.3,
+    alpha.regions=1,
     col.regions = 'orange')+
   mapview(
     catchment_large_pool, 
     alpha.regions=0.3,
     col.regions = 'dark blue')+
   mapview(streams) +
-  mapview(pnts, zcol='twi') +
   mapview(gps)
 m
 
