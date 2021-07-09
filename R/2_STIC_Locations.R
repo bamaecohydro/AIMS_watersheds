@@ -201,7 +201,6 @@ wbt_wetness_index(
 #Bring rasters into R env
 twi<-raster(paste0(scratch_dir,"twi.tif"))
 fac<-raster(paste0(scratch_dir,"fac.tif"))
-dem<-raster(paste0(scratch_dir,"dem_smoothed.tif"))
 dist2out<-raster(paste0(scratch_dir, "dst2out.tif"))
 
 #Convert stream network to point w/ TWI and Aws information
@@ -211,7 +210,7 @@ pnts<-
     density = res(dem)[1]) %>%  
   st_coordinates() %>% 
   as_tibble() %>% 
-  st_as_sf(
+  sf::st_as_sf(
     coords  = c('X','Y'), 
     crs = st_crs(dem@crs)) %>% 
   dplyr::rename(StreamReach = L1) %>% 
@@ -341,7 +340,7 @@ stics<-stics %>% select(pid) %>% pull()
 stics<-pnts %>% filter(pid %in% stics)
 
 #2.9 Export STICS --------------------------------------------------------------
-stics
+list(stics, streams)
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -367,9 +366,11 @@ flumes<-st_read(
 pp$site<-"super_station"
 flumes<-bind_rows(flumes, pp)
   
-#test watershed delineation fun
-test<-stic_fun(dem, pp, threshold = 25000, 
+#run function
+results<-stic_fun(dem, pp, threshold = 25000, 
   n_stics = 20, buffer_dist = 25,
   hydro_pnts =flumes, scratch_dir 
 )
 
+#Create interactive plots
+m<-mapview(results[[1]]) + mapview(results[[2]])
