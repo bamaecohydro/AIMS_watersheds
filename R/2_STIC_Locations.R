@@ -73,6 +73,14 @@ wbt_d8_flow_accumulation(
   wd = scratch_dir
 )
 
+#Create Stream Layer
+wbt_extract_streams(
+  flow_accum = "fac.tif",
+  output = "stream.tif",
+  threshold = threshold,
+  wd = scratch_dir
+)
+
 #Paste point points in scratch dir
 st_write(pp, paste0(scratch_dir,"pp.shp"), delete_dsn = T)
 
@@ -102,7 +110,7 @@ sheds$area_ha<-st_area(sheds, byid=T)
 sheds$area_ha<-as.numeric(paste0(sheds$area_ha))/10000
 sheds$area_ha<-round(sheds$area_ha, 0)
 
-#2.3 Crop rasters based on watershed -------------------------------------
+#2.2 Crop rasters based on watershed -------------------------------------
 #Write watershed polygon to workspace
 st_write(sheds, paste0(scratch_dir,"sheds.shp"), delete_dsn = T)
 
@@ -172,6 +180,14 @@ wbt_d8_flow_accumulation(
   output = "sca.tif",
   out_type="specific contributing area", 
   wd = scratch_dir
+)
+
+
+#Run slope function
+wbt_slope(
+  dem ="dem_breached.tif",
+  output = "slope.tif", 
+  wd=scratch_dir
 )
 
 #Run TWI Function
