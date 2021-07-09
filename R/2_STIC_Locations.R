@@ -102,7 +102,41 @@ sheds$area_ha<-st_area(sheds, byid=T)
 sheds$area_ha<-as.numeric(paste0(sheds$area_ha))/10000
 sheds$area_ha<-round(sheds$area_ha, 0)
 
-#2.2 Stream network delineation ------------------------------------------------
+#2.3 Crop rasters based on watershed -------------------------------------
+#Write watershed polygon to workspace
+st_write(sheds, paste0(scratch_dir,"sheds.shp"), delete_dsn = T)
+
+#Clip fac
+wbt_clip_raster_to_polygon(
+  input = "fac.tif", 
+  polygons = "sheds.shp", 
+  output = "fac.tif",
+  wd = scratch_dir
+)
+
+#clip fdr
+wbt_clip_raster_to_polygon(
+  input = "fdr.tif", 
+  polygons = "sheds.shp", 
+  output = "fdr.tif",
+  wd = scratch_dir
+)
+
+#clip dem(s)
+wbt_clip_raster_to_polygon(
+  input = "dem_smoothed.tif", 
+  polygons = "sheds.shp", 
+  output = "dem_smoothed.tif",
+  wd = scratch_dir
+)
+wbt_clip_raster_to_polygon(
+  input = "dem_breached.tif", 
+  polygons = "sheds.shp", 
+  output = "dem_breached.tif",
+  wd = scratch_dir
+)
+
+#2.3 Stream network delineation ------------------------------------------------
 #Create Stream Layer
 wbt_extract_streams(
   flow_accum = "fac.tif",
@@ -123,7 +157,7 @@ wbt_raster_streams_to_vector(
 streams<-st_read(paste0(scratch_dir, "streams.shp"))
 st_crs(streams)<-st_crs(dem@crs)
 
-#2.3 Characterize points along stream ------------------------------------------
+#2.4 Characterize points along stream ------------------------------------------
 #distance to outlet
 wbt_distance_to_outlet(
   d8_pntr = 'fdr.tif',
@@ -171,7 +205,7 @@ pnts<-
     con_area_ha = raster::extract(fac, .)/10000,
     pid = seq(1, nrow(.)))  # a unique identifier for each point
 
-#2.4 Subset points into bins ---------------------------------------------------
+#2.5 Subset points into bins ---------------------------------------------------
 #Create 10 'bins' based drainage area
 n_groups_area <- 10
 bins_area <- getJenksBreaks(pnts$con_area_ha, n_groups_area+1)
@@ -210,7 +244,7 @@ group<-pnts %>%
   mutate(group = seq(1, nrow(.)))
 pnts<-left_join(pnts, group); remove(group)
 
-#2.5 Create function to remove points along stream -----------------------------
+#2.6 Create function to remove points along stream -----------------------------
 trim_fun<-function(pids){
   
   #create inner function to identify points to crop based on river distance
@@ -236,7 +270,7 @@ trim_fun<-function(pids){
   lapply(seq(1, length(pids)), inner_fun) %>% unlist
 }
 
-# 2.6 Remove hydro points ------------------------------------------------------
+# 2.7 Remove hydro points ------------------------------------------------------
 #create function to identify closest point
 snap_fun<-function(n){
 
@@ -262,7 +296,7 @@ hydro_pnt_pids<-lapply(seq(1, nrow(hydro_pnts)), snap_fun) %>% unlist()
 crop<-trim_fun(hydro_pnt_pids)
 pnts_cropped<-pnts %>% dplyr::filter(!(pid %in% crop))
 
-#2.7 STIC Placement ------------------------------------------------------------
+#2.8 STIC Placement ------------------------------------------------------------
 #Randomly select point from first group
 stics<-pnts %>% 
   st_drop_geometry() %>% 
@@ -290,7 +324,7 @@ for(i in 2:max(pnts$group, na.rm=T)){
 stics<-stics %>% select(pid) %>% pull()
 stics<-pnts %>% filter(pid %in% stics)
 
-#2.8 Export STICS --------------------------------------------------------------
+#2.9 Export STICS --------------------------------------------------------------
 stics
 }
 
