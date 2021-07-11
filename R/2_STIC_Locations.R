@@ -374,4 +374,4 @@ results<-stic_fun(dem, pp, threshold = 25000,
 
 #Create interactive plots
 m<-mapview(results[[1]]) + mapview(results[[2]])
-mapshot(m, "docs/stics_weyerhaeuser.html", selfcontained=T)
+mapshot(m, "docs/stics_shambly.html")
