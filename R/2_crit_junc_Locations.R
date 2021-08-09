@@ -343,3 +343,6 @@ stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations)
 m
 mapshot(m, "docs/weyerhaueser_sampling_stations.html")
+
+#Export points 
+st_write(stations, paste0(output_dir, "dist_piez.shp"))
