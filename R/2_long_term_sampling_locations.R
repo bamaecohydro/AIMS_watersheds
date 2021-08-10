@@ -316,14 +316,18 @@ main_stem_pnts <- pnts[shed,] %>%
   select(pid, drain_area_ha) 
 
 #Subset based on % of watershed area
-q<-quantile(main_stem_pnts$drain_area_ha, c(0.25, 0.5, 0.75)) %>% 
-  paste() %>% 
-  as.numeric()
+ws_area<-pnts[shed,] %>% 
+  st_drop_geometry() %>% 
+  filter(StreamReach %in% main_stem$StreamReach) %>% 
+  group_by(StreamReach) %>% 
+  slice_max(drain_area_ha, n=1) %>% 
+  select(drain_area_ha) %>% pull()
+ws_area<-c(ws_area*0.25, ws_area*0.5, ws_area*0.75)
 main_stem_pnts<-main_stem_pnts %>% 
   mutate(
-    q25 = abs(drain_area_ha-q[1]),
-    q50 = abs(drain_area_ha-q[2]),
-    q75 = abs(drain_area_ha-q[3])) %>% 
+    q25 = abs(drain_area_ha-ws_area[1]),
+    q50 = abs(drain_area_ha-ws_area[2]),
+    q75 = abs(drain_area_ha-ws_area[3])) %>% 
   select(-drain_area_ha) %>% 
   pivot_longer(-pid, names_to = 'quant', values_to = 'diff') %>% 
   group_by(quant) %>% 
@@ -331,8 +335,6 @@ main_stem_pnts<-main_stem_pnts %>%
   ungroup() %>% 
   select(pid) %>% 
   pull()
-
-
 
 #2.3.4 Export points -----------------------------------------------------------
 #Combine points
@@ -366,7 +368,7 @@ output<-sampling_station_fun(dem, pp, threshold = 45000, scratch_dir)
 shed<-output[[1]]
 streams<-output[[2]]
 stations<-output[[3]]
-m<-mapview(shed) + mapview(streams) + mapview(stations)
+m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
 mapshot(m, "docs/weyerhaueser_sampling_stations.html")
 
