@@ -35,7 +35,8 @@ sampling_station_fun<-function(
   dem, #Digital elevation model for site
   pp,  #watershed outlet location
   threshold, #Rough threshold to initiate stream channel
-  scratch_dir #Scratch directory
+  scratch_dir, #Scratch directory
+  main_stem_stn = c(0.1,0.25,0.5, 0.75)
 ){
 
 #2.1 Delineate Watershed -------------------------------------------------------
@@ -328,7 +329,10 @@ main_stem_pnts <- pnts[shed,] %>%
 
 #Subset based on % of watershed area
 ws_area<-(st_area(shed)/10000) %>% paste %>% as.numeric()
-ws_area<-c(ws_area*0.25, ws_area*0.5, ws_area*0.75, ws_area*0.10)
+ws_area<-c(ws_area*main_stem_stn[1], 
+           ws_area*main_stem_stn[2], 
+           ws_area*main_stem_stn[3], 
+           ws_area*main_stem_stn[4])
 main_stem_pnts<-main_stem_pnts %>% 
   mutate(
     q25 = abs(drain_area_ha-ws_area[1]),
@@ -402,7 +406,7 @@ stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
 mapshot(m, "docs/lts_paintrock.html")
-○
+
 #Export points 
 st_write(stations, paste0(output_dir, "lts_paintrock.shp"))
 
