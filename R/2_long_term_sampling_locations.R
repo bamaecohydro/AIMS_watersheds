@@ -169,6 +169,7 @@ twi<-raster(paste0(scratch_dir,"twi.tif"))
 fac<-raster(paste0(scratch_dir,"fac.tif"))
   fac<-crop(fac, shed)
   fac<-mask(fac, shed)
+  fac<-fac*res(fac)[1]*res(fac)[2]
 dist2out<-raster(paste0(scratch_dir, "dist2out.tif"))
   dist2out<-crop(dist2out, shed)
   dist2out<-mask(dist2out, shed)
@@ -199,7 +200,20 @@ pnts<-
 #Crop pnts to shed
 pnts<-pnts[shed,]
 
+#Remove points within 25 m of juncture 
+pnts_junctures<-pnts %>% 
+  group_by(StreamReach) %>% 
+  slice_max(drain_area_ha, n=1, with_ties = F) %>%
+  st_buffer(., dist=25) %>% 
+  st_intersection(pnts,.) %>% 
+  st_drop_geometry %>% 
+  select(pid) %>% 
+  pull()
+pnts<-pnts %>% filter(!(pid %in% pnts_junctures))
+
 #2.2.4 Define network connectivity----------------------------------------------
+streams$drainage_area<-raster::extract(fac,streams, fun=max, na.rm=T)
+
 #Create function to define conn by reach
 con_fun<-function(n){
   
@@ -212,14 +226,15 @@ con_fun<-function(n){
   #Identify intersecting reaches
   streams_temp<-streams[reach,]
   
-  #Determine reachIDs 
-  streams_temp<-streams_temp %>% st_drop_geometry %>% select(StreamReach) %>% pull()
-  
-  #Determine downstream reach using min downstream dist
-  Flows_To<-pnts %>% 
+  #Identify downstream reach
+  Flows_To<-streams_temp %>% 
+    #Kill geo
     st_drop_geometry() %>% 
-    filter(StreamReach %in% streams_temp) %>% 
-    filter(dist2out == min(dist2out, na.rm=T)) %>% 
+    #Remove study reach
+    filter(drainage_area>reach$drainage_area) %>% 
+    #Identify reach w/ largest ws area
+    slice_max(drainage_area, n=1, with_ties = F) %>% 
+    #select uid 
     select(StreamReach) %>% pull()
   
   #export point
@@ -227,42 +242,35 @@ con_fun<-function(n){
 }
 
 #Apply function and join to streams fun
-con<-lapply(seq(1,nrow(streams)), con_fun) %>% bind_rows()
+con<-lapply(seq(1,nrow(streams)), con_fun) %>% bind_rows() %>% distinct()
 streams <- streams %>% left_join(., con)
 
-#2.2.4 Estimate drainage area of each reach ------------------------------------
+#Remove drainage area estimate based (sometimes this is innacurate due to raster resolution)
+streams<-streams %>% select(-drainage_area)
+
+# #2.2.5 Estimate drainage area of each reach ------------------------------------
 #Identify drainage area based on points
-drainage_area<-pnts %>% 
+drainage_area<-pnts %>%
   #Drop geomoetry info
-  st_drop_geometry() %>% 
+  st_drop_geometry() %>%
   #group by stream reach
-  group_by(StreamReach) %>% 
-  #Select point with min downstream dist 
-  slice_min(dist2out, with_ties = F) %>% 
-  #Select 
+  group_by(StreamReach) %>%
+  #Select point with min downstream dist
+  slice_max(drain_area_ha, with_ties = F) %>%
+  #Select
   select(StreamReach, drain_area_ha)
 
 #Join to streams layer
 streams<-left_join(streams, drainage_area)
   
 #2.3 Identify sampling points---------------------------------------------------
-#2.3.0 Remove points within 25 m of juncture -----------------------------------
-pnts_junctures<-pnts %>% 
-  group_by(StreamReach) %>% 
-  slice_max(drain_area_ha) %>%
-  st_buffer(., dist=25) %>% 
-  st_intersection(pnts,.) %>% 
-  st_drop_geometry %>% 
-  select(pid) %>% 
-  pull()
-pnts<-pnts %>% filter(!(pid %in% pnts_junctures))
-
 #2.3.1 Define main stem (longest connected stream length) ----------------------
 #Identify headwater reach of main stem
 main_stem<-pnts %>% 
   st_drop_geometry() %>% 
-  slice_max(dist2out) %>% 
+  slice_max(dist2out, n=1, with_ties = F) %>% 
   select(StreamReach) %>% 
+  slice(n=1) %>% 
   pull()
 
 #Use while loop to identify downstream reaches
@@ -282,32 +290,36 @@ main_stem<-streams %>% filter(StreamReach %in% main_stem)
 tribs<-streams[main_stem,]
 
 #Crop out main stem
-tribs<-tribs %>% filter(!(StreamReach %in% main_stem$StreamReach))
+tribs<-tribs %>% 
+  filter(!(StreamReach %in% main_stem$StreamReach))
 
 #Select top two tribs
-tribs<-tribs %>% slice_max(drain_area_ha, n=2)
+tribs<-tribs %>% 
+  slice_max(drain_area_ha, n=2, with_ties = F)
 
 #Define sampling point pid
 trib_pnts<-pnts %>% 
   st_drop_geometry() %>% 
   filter(StreamReach %in% tribs$StreamReach) %>% 
   group_by(StreamReach) %>% 
-  slice_max(drain_area_ha, n=1) %>% 
-  select(pid) %>% pull()
-
-#2.3.3 Define stations along main stem -------------------------------------------
-#Define main stem tributary (upstream of side channels)
-main_stem<-main_stem %>% 
-    filter(!(StreamReach %in% tribs$Flows_To))
-
-#define main stem outlet
-main_stem_outlet_pnt<-pnts[shed,] %>% 
-  st_drop_geometry() %>% 
-  filter(StreamReach %in% main_stem$StreamReach) %>% 
-  group_by(StreamReach) %>% 
   slice_max(drain_area_ha, n=1, with_ties = F) %>% 
   select(pid) %>% pull()
 
+#2.3.3 Define stations upstream of tribs ---------------------------------------
+# #define upstream tribs
+# upstream_trib<-main_stem[tribs,] 
+# upstream_trib<-upstream_trib %>% 
+#   filter(!(StreamReach %in% tribs$StreamReach)) %>% 
+#   slice_min(drain_area_ha, n=1, with_ties = F)
+# #Identify points
+# upstream_trib_pnts<-pnts %>% 
+#   st_drop_geometry() %>% 
+#   filter(StreamReach %in% upstream_trib$StreamReach) %>% 
+#   slice_max(drain_area_ha, n=1, with_ties = F) %>% 
+#   select(pid) %>% 
+#   pull()
+
+#2.3.4 Define stations along main stem -----------------------------------------
 #Define main stem points
 main_stem_pnts <- pnts[shed,] %>% 
   st_drop_geometry() %>% 
@@ -315,18 +327,14 @@ main_stem_pnts <- pnts[shed,] %>%
   select(pid, drain_area_ha) 
 
 #Subset based on % of watershed area
-ws_area<-pnts[shed,] %>% 
-  st_drop_geometry() %>% 
-  filter(StreamReach %in% main_stem$StreamReach) %>% 
-  group_by(StreamReach) %>% 
-  slice_max(drain_area_ha, n=1, with_ties = F) %>% 
-  select(drain_area_ha) %>% pull()
-ws_area<-c(ws_area*0.25, ws_area*0.5, ws_area*0.75)
+ws_area<-(st_area(shed)/10000) %>% paste %>% as.numeric()
+ws_area<-c(ws_area*0.25, ws_area*0.5, ws_area*0.75, ws_area*0.10)
 main_stem_pnts<-main_stem_pnts %>% 
   mutate(
     q25 = abs(drain_area_ha-ws_area[1]),
     q50 = abs(drain_area_ha-ws_area[2]),
-    q75 = abs(drain_area_ha-ws_area[3])) %>% 
+    q75 = abs(drain_area_ha-ws_area[3]),
+    q90 = abs(drain_area_ha-ws_area[4])) %>% 
   select(-drain_area_ha) %>% 
   pivot_longer(-pid, names_to = 'quant', values_to = 'diff') %>% 
   group_by(quant) %>% 
@@ -335,9 +343,9 @@ main_stem_pnts<-main_stem_pnts %>%
   select(pid) %>% 
   pull()
 
-#2.3.4 Export points -----------------------------------------------------------
+#2.3.5 Export points -----------------------------------------------------------
 #Combine points
-output<-pnts %>% filter(pid %in% c(trib_pnts, main_stem_outlet_pnt, main_stem_pnts))
+output<-pnts %>% filter(pid %in% c(trib_pnts, main_stem_pnts))
 output<-st_as_sf(output)
 
 #Export
@@ -346,7 +354,7 @@ list(shed, streams, output)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 3: Watershed Analysis ----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#3.1 Weyerhaueser --------------------------------------------------------------
+#3.1 Shambly --------------------------------------------------------------
 #Define Data Directory
 data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_weyerhaeuser//"
 
@@ -361,7 +369,7 @@ pp<-tibble(
   st_transform(., crs = st_crs(dem@crs))
 
 #Run function
-output<-sampling_station_fun(dem, pp, threshold = 45000, scratch_dir)
+output<-sampling_station_fun(dem, pp, threshold = 50000, scratch_dir)
 
 #Map
 shed<-output[[1]]
@@ -373,3 +381,52 @@ mapshot(m, "docs/lts_shambly.html")
 
 #Export points 
 st_write(stations, paste0(output_dir, "lts_shambly.shp"))
+
+#3.2 Paint Rock ----------------------------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_paintrock//"
+
+#Define data inputs
+dem<-raster(paste0(data_dir,"dem_mask_10m.tif"))
+pp<-st_read(paste0(data_dir, "watershed_outlets.shp")) %>% 
+  filter(Name == "Fanning Hollow") %>% 
+  st_transform(., crs = st_crs(dem@crs))
+
+#Run function
+output<-sampling_station_fun(dem, pp, threshold = 1000, scratch_dir)
+
+#Map
+shed<-output[[1]]
+streams<-output[[2]]
+stations<-output[[3]]
+m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
+m
+mapshot(m, "docs/lts_paintrock.html")
+○
+#Export points 
+st_write(stations, paste0(output_dir, "lts_paintrock.shp"))
+
+#3.3 Talladega------------------------------------------------------------------
+#Define Data Directory
+data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_Talladega//"
+
+#Define data inputs
+dem<-raster(paste0(data_dir,"elevation//lidar01m33085g5.tif"))
+  crop<-st_read(paste0(data_dir, "crop2.shp"))
+  dem<-crop(dem,crop)
+pp<-st_read(paste0(data_dir,"pp.shp"))
+
+#Run function
+output<-sampling_station_fun(dem, pp, threshold = 35000, scratch_dir)
+
+#Map
+shed<-output[[1]]
+streams<-output[[2]]
+stations<-output[[3]]
+m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
+m
+mapshot(m, "docs/lts_talladega.html")
+
+#Export points 
+st_write(stations, paste0(output_dir, "lts_talladega.shp"))
+

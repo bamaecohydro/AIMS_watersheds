@@ -262,9 +262,13 @@ mapviewOptions(fgb = FALSE)
 m<-mapview(pp, alpha.regions = 1, col.regions = "dark blue") + 
   mapview(sheds, alpha.regions = 0.6, col.regions = 'red')+
   mapview(streams, col.regions = 'blue')
-
 m
 
 #Export map for Viewing
 mapshot(m, "Talladega_Site_Selection.html", selfcontained=T)
+
+#Write output
+st_write(streams, paste0(output_dir, "streams.shp"))
+st_write(sheds, paste(output_dir,"sheds.shp"))
+st_write(pp, paste0(output_dir, "pnts.shp"))
 
