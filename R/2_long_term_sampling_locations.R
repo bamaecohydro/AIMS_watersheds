@@ -370,7 +370,7 @@ streams<-output[[2]]
 stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
-mapshot(m, "docs/weyerhaueser_sampling_stations.html")
+mapshot(m, "docs/lts_shambly.html")
 
 #Export points 
-st_write(stations, paste0(output_dir, "dist_piez.shp"))
+st_write(stations, paste0(output_dir, "lts_shambly.shp"))
