@@ -255,7 +255,6 @@ pnts_junctures<-pnts %>%
   st_drop_geometry %>% 
   select(pid) %>% 
   pull()
-
 pnts<-pnts %>% filter(!(pid %in% pnts_junctures))
 
 #2.3.1 Define main stem (longest connected stream length) ----------------------
@@ -306,7 +305,7 @@ main_stem_outlet_pnt<-pnts[shed,] %>%
   st_drop_geometry() %>% 
   filter(StreamReach %in% main_stem$StreamReach) %>% 
   group_by(StreamReach) %>% 
-  slice_max(drain_area_ha, n=1) %>% 
+  slice_max(drain_area_ha, n=1, with_ties = F) %>% 
   select(pid) %>% pull()
 
 #Define main stem points
@@ -320,7 +319,7 @@ ws_area<-pnts[shed,] %>%
   st_drop_geometry() %>% 
   filter(StreamReach %in% main_stem$StreamReach) %>% 
   group_by(StreamReach) %>% 
-  slice_max(drain_area_ha, n=1) %>% 
+  slice_max(drain_area_ha, n=1, with_ties = F) %>% 
   select(drain_area_ha) %>% pull()
 ws_area<-c(ws_area*0.25, ws_area*0.5, ws_area*0.75)
 main_stem_pnts<-main_stem_pnts %>% 
