@@ -363,7 +363,7 @@ list(shed, streams, output)
 data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_weyerhaeuser//"
 
 #Define data inputs
-dem<-raster(paste0(data_dir,"dem.tif"))
+dem<-raster(paste0(data_dir,"dem_crop.tif"))
 pp<-tibble(
   y=c(32.98465), 
   x=c(-88.01226)) %>% 
@@ -373,7 +373,10 @@ pp<-tibble(
   st_transform(., crs = st_crs(dem@crs))
 
 #Run function
-output<-sampling_station_fun(dem, pp, threshold = 50000, scratch_dir)
+output<-sampling_station_fun(dem, pp, 
+                             threshold = 50000, 
+                             scratch_dir, 
+                             main_stem_stn = c(0.5, 0.375, 0.25, 0.125))
 
 #Map
 shed<-output[[1]]
