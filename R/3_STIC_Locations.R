@@ -5,6 +5,11 @@
 #Purpose: Define initial stic placement
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#Next Steps: 
+#  Delete pnts near hydro_pnts (why is this not working?)
+#  Delete pnts near junctures!
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 1: Setup workspace -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,6 +48,9 @@ stic_fun<-function(
   ){
 
 #2.1 Delineate Watershed -------------------------------------------------------
+#Clear scratch dir
+sapply(list.files(scratch_dir, full.names = T, recursive = T), unlink)
+
 #Export DEM to scratch workspace
 writeRaster(dem, paste0(scratch_dir,"dem.tif"), overwrite=T)
 
@@ -111,38 +119,38 @@ sheds$area_ha<-as.numeric(paste0(sheds$area_ha))/10000
 sheds$area_ha<-round(sheds$area_ha, 0)
 
 #2.2 Crop rasters based on watershed -------------------------------------
-#Write watershed polygon to workspace
-st_write(sheds, paste0(scratch_dir,"sheds.shp"), delete_dsn = T)
-
-#Clip fac
-wbt_clip_raster_to_polygon(
-  input = "fac.tif", 
-  polygons = "sheds.shp", 
-  output = "fac.tif",
-  wd = scratch_dir
-)
-
-#clip fdr
-wbt_clip_raster_to_polygon(
-  input = "fdr.tif", 
-  polygons = "sheds.shp", 
-  output = "fdr.tif",
-  wd = scratch_dir
-)
-
-#clip dem(s)
-wbt_clip_raster_to_polygon(
-  input = "dem_smoothed.tif", 
-  polygons = "sheds.shp", 
-  output = "dem_smoothed.tif",
-  wd = scratch_dir
-)
-wbt_clip_raster_to_polygon(
-  input = "dem_breached.tif", 
-  polygons = "sheds.shp", 
-  output = "dem_breached.tif",
-  wd = scratch_dir
-)
+# #Write watershed polygon to workspace
+# st_write(sheds, paste0(scratch_dir,"sheds.shp"), delete_dsn = T)
+# 
+# #Clip fac
+# wbt_clip_raster_to_polygon(
+#   input = "fac.tif", 
+#   polygons = "sheds.shp", 
+#   output = "fac.tif",
+#   wd = scratch_dir
+# )
+# 
+# #clip fdr
+# wbt_clip_raster_to_polygon(
+#   input = "fdr.tif", 
+#   polygons = "sheds.shp", 
+#   output = "fdr.tif",
+#   wd = scratch_dir
+# )
+# 
+# #clip dem(s)
+# wbt_clip_raster_to_polygon(
+#   input = "dem_smoothed.tif", 
+#   polygons = "sheds.shp", 
+#   output = "dem_smoothed.tif",
+#   wd = scratch_dir
+# )
+# wbt_clip_raster_to_polygon(
+#   input = "dem_breached.tif", 
+#   polygons = "sheds.shp", 
+#   output = "dem_breached.tif",
+#   wd = scratch_dir
+# )
 
 #2.3 Stream network delineation ------------------------------------------------
 #Create Stream Layer
@@ -182,7 +190,6 @@ wbt_d8_flow_accumulation(
   wd = scratch_dir
 )
 
-
 #Run slope function
 wbt_slope(
   dem ="dem_breached.tif",
@@ -219,6 +226,9 @@ pnts<-
     twi = raster::extract(twi, .), 
     con_area_ha = raster::extract(fac, .)/10000,
     pid = seq(1, nrow(.)))  # a unique identifier for each point
+
+#Crop to stream
+pnts<-pnts[sheds,]
 
 #2.5 Subset points into bins ---------------------------------------------------
 #Create 10 'bins' based drainage area
@@ -309,11 +319,12 @@ hydro_pnt_pids<-lapply(seq(1, nrow(hydro_pnts)), snap_fun) %>% unlist()
 
 #remove from points
 crop<-trim_fun(hydro_pnt_pids)
-pnts_cropped<-pnts %>% dplyr::filter(!(pid %in% crop))
+pnts_cropped<-pnts %>% 
+  dplyr::filter(!(pid %in% crop)) 
 
 #2.8 STIC Placement ------------------------------------------------------------
 #Randomly select point from first group
-stics<-pnts %>% 
+stics<-pnts_cropped %>% 
   st_drop_geometry() %>% 
   arrange(dist2out) %>% 
   filter(group == 1) %>% 
@@ -323,16 +334,31 @@ stics<-pnts %>%
 crop<-trim_fun(stics$pid)
 pnts_cropped<-pnts_cropped %>% dplyr::filter(!(pid %in% crop))
 
+#identify remaining groups
+grp<-pnts_cropped %>% 
+  st_drop_geometry() %>% 
+  select(group) %>% 
+  distinct() %>% 
+  pull()
+
 #Iterate through all remaining groups
-for(i in 2:max(pnts$group, na.rm=T)){
-  temp<-pnts %>% 
+i<-2
+while(i < length(grp)){
+  temp<-pnts_cropped %>% 
     st_drop_geometry() %>% 
     arrange(dist2out) %>% 
-    filter(group == i) %>% 
+    filter(group == grp[i]) %>% 
     sample_n(1)
   crop<-trim_fun(temp$pid)
   pnts_cropped<-pnts_cropped %>% dplyr::filter(!(pid %in% crop))
   stics<-bind_rows(stics, temp)
+  grp<-pnts_cropped %>% 
+    st_drop_geometry() %>% 
+    select(group) %>% 
+    distinct() %>% 
+    pull()
+  i<-i+1
+  print(i)
 }
 
 #filter points to stics
@@ -344,34 +370,43 @@ list(stics, streams)
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Step 3: Testing for now -------------------------------------------------------
+#Step 3: Watershed Analysis ----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#3.1 Shambly --------------------------------------------------------------
 #Define Data Directory
 data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_weyerhaeuser//"
 
-#Define data inputs
-dem<-raster(paste0(data_dir,"dem.tif"))
+#Load DEM
+dem<-raster(paste0(data_dir,"dem_crop.tif"))
+
+#Load watershed outlet location
 pp<-tibble(
-  y=c(32.98465), 
-  x=c(-88.01226)) %>% 
+    y=c(32.98465), 
+    x=c(-88.01226)) %>% 
   st_as_sf(., 
-           coords = c("x", "y"), 
-           crs = '+proj=longlat +datum=WGS84 +no_defs') %>% 
-  st_transform(., crs = st_crs(dem@crs))
+    coords = c("x", "y"), 
+    crs = '+proj=longlat +datum=WGS84 +no_defs') %>% 
+  st_transform(., crs = st_crs(dem@crs)) 
+
+#Load existing hydro infrastructure
 flumes<-st_read(
-          paste0(data_dir,"flumes.shp"), 
-          crs =st_crs(" +proj=utm +zone=16 +datum=WGS84 +units=m +no_defs")) %>% 
+    paste0(data_dir,"flumes.shp"), 
+    crs =st_crs(" +proj=utm +zone=16 +datum=WGS84 +units=m +no_defs")) %>% 
   rename(site = Flumes) %>% 
   filter(site == "GR1" | site == "GR2") 
-pp$site<-"super_station"
-flumes<-bind_rows(flumes, pp)
+lts<-st_read(paste0(output_dir, "lts_shambly.shp")) %>% 
+  mutate(site = paste0('shambly_',seq(1,nrow(.))))
+pp <- pp %>% mutate(site='super_sensor')
+hydro_pnts<-bind_rows(flumes, lts, pp)
   
 #run function
-results<-stic_fun(dem, pp, threshold = 25000, 
+output<-stic_fun(dem, pp, threshold = 50000, 
   n_stics = 20, buffer_dist = 25,
-  hydro_pnts =flumes, scratch_dir 
+  hydro_pnts, scratch_dir 
 )
 
 #Create interactive plots
-m<-mapview(results[[1]]) + mapview(results[[2]])
+m<-mapview(output[[1]]) + 
+  mapview(output[[2]]) 
+m
 mapshot(m, "docs/stics_shambly.html")
