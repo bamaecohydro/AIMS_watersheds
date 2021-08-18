@@ -384,10 +384,10 @@ streams<-output[[2]]
 stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
-mapshot(m, "docs/ltm_shambly.html")
+mapshot(m, "docs/lts_shambly.html")
 
 #Export points 
-st_write(stations, paste0(output_dir, "ltm_shambly.shp"))
+st_write(stations, paste0(output_dir, "lts_shambly.shp"))
 
 #3.2 Paint Rock ----------------------------------------------------------------
 #Define Data Directory
@@ -408,10 +408,10 @@ streams<-output[[2]]
 stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
-mapshot(m, "docs/ltm_paintrock.html")
+mapshot(m, "docs/lts_paintrock.html")
 
 #Export points 
-st_write(stations, paste0(output_dir, "ltm_paintrock.shp"))
+st_write(stations, paste0(output_dir, "lts_paintrock.shp"))
 
 #3.3 Talladega------------------------------------------------------------------
 #Define Data Directory
@@ -432,8 +432,8 @@ streams<-output[[2]]
 stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
-mapshot(m, "docs/ltm_talladega.html")
+mapshot(m, "docs/lts_talladega.html")
 
 #Export points 
-st_write(stations, paste0(output_dir, "ltm_talladega.shp"))
+st_write(stations, paste0(output_dir, "lts_talladega.shp"))
 
