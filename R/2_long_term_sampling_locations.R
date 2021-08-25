@@ -419,9 +419,15 @@ data_dir<-"C://WorkspaceR//AIMS_watersheds//data//I_data_Talladega//"
 
 #Define data inputs
 dem<-raster(paste0(data_dir,"elevation//lidar01m33085g5.tif"))
-  crop<-st_read(paste0(data_dir, "crop2.shp"))
-  dem<-crop(dem,crop)
-pp<-st_read(paste0(data_dir,"pp.shp"))
+crop<-st_read(paste0(data_dir, "crop2.shp"))
+dem<-crop(dem,crop)
+pp<-tibble(
+  y=c(33.76223), 
+  x=c(-85.59615)) %>% 
+  st_as_sf(., 
+           coords = c("x", "y"), 
+           crs = '+proj=longlat +datum=WGS84 +no_defs') %>% 
+  st_transform(., crs = st_crs(dem@crs))
 
 #Run function
 output<-sampling_station_fun(dem, pp, threshold = 35000, scratch_dir)
@@ -432,7 +438,8 @@ streams<-output[[2]]
 stations<-output[[3]]
 m<-mapview(shed) + mapview(streams) + mapview(stations) + mapview(pp)
 m
-mapshot(m, "docs/ltm_talladega.html")
+mapshot(m, "docs/lts_talladega.html")
+
 
 #Export points 
 st_write(stations, paste0(output_dir, "ltm_talladega.shp"))
